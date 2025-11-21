@@ -281,17 +281,15 @@ class OnnxEmotionService {
       // Run the model
       outputs = await _session!.run(inputs);
 
-      if (outputs == null ||
+      if (outputs.isEmpty ||
           outputs.isEmpty ||
           outputs[outputNames.first] == null) {
         throw Exception('Model execution returned no outputs');
       }
 
-      // Get the output data
+      // Get the output data as List
       final outputValue = await outputs[outputNames.first]!.asList();
-
-      if (outputValue is List) {
-        final outputData = outputValue;
+      final outputData = outputValue;
 
         if (outputData.isEmpty || (outputData.first as List).isEmpty) {
           throw Exception('Model output list is empty');
@@ -307,11 +305,6 @@ class OnnxEmotionService {
           throw Exception('Model output size mismatch');
         }
         return probabilities;
-      } else {
-        _logger.e('Unexpected output type: ${outputValue.runtimeType}');
-        _logger.e('Output value: $outputValue');
-        throw Exception('Unexpected model output type');
-      }
     } catch (e) {
       _logger.e('❌ ONNX inference failed', error: e);
       rethrow;

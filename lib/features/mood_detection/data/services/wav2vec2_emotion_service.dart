@@ -157,11 +157,11 @@ class Wav2Vec2EmotionService {
       final inputs = {inputName: inputTensor};
 
       final outputs = await _session!.run(inputs);
-      if (outputs == null || outputs.isEmpty) throw Exception("No output from AI");
+      if (outputs.isEmpty) throw Exception("No output from AI");
 
       // 5. Process Outputs
       final outputKey = _session!.outputNames.first;
-      final outputOrt = outputs[outputKey] as OrtValue?;
+      final outputOrt = outputs[outputKey];
       
       final rawOutputList = await outputOrt!.asList();
       final logits = (rawOutputList[0] as List).map((e) => (e as num).toDouble()).toList();
@@ -188,7 +188,12 @@ class Wav2Vec2EmotionService {
       }
 
       if (workingFile.path != audioFile.path) {
-        await workingFile.delete().catchError((_) {}); 
+        try {
+          await workingFile.delete();
+        } catch (e) {
+          // Ignore deletion errors during cleanup
+          print('Warning: Could not delete temporary file: $e');
+        } 
       }
 
       return EmotionResult(

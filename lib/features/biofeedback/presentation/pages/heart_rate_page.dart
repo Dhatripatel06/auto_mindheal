@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
-import '../../../../core/services/signal_processing_service.dart';
+
 import '../providers/biofeedback_provider.dart';
 
 class CameraHeartRatePage extends StatefulWidget {
@@ -23,7 +23,7 @@ class _CameraHeartRatePageState extends State<CameraHeartRatePage>
   int _progress = 0;
   String _statusMessage = 'Place finger over camera and flash';
   
-  final SignalProcessingService _signalProcessor = SignalProcessingService();
+  // final SignalProcessingService _signalProcessor = SignalProcessingService(); // Unused for now
   
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;

@@ -174,7 +174,7 @@ class CombinedDetectionProvider extends ChangeNotifier {
 
   Future<void> analyzeCameraFrame(File frameFile) async {
     if (_isVisualEnabled) {
-      await _imageProvider.processImage(frameFile);
+      await _imageProvider.processImage(frameFile.path);
       if (_imageProvider.currentResult != null) {
         _imageConfidence = _imageProvider.currentResult!.confidence;
       }

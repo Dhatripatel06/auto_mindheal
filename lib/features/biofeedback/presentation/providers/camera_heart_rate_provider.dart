@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
-import 'package:image/image.dart' as img;
 import '../../../../core/services/signal_processing_service.dart';
 import '../../../../shared/models/heart_rate_measurement.dart';
 
@@ -163,7 +162,7 @@ class CameraHeartRateProvider extends ChangeNotifier {
       if (_isDisposed || _state != MeasurementState.measuring) return;
       
       // Add data point to signal processor
-      double filteredValue = _signalProcessor.addDataPoint(intensity);
+      _signalProcessor.addDataPoint(intensity);
       
       // Update waveform data for UI
       _waveformData = _signalProcessor.getWaveformData();
@@ -199,7 +198,7 @@ class CameraHeartRateProvider extends ChangeNotifier {
             
             // YUV to RGB conversion
             final int yValue = yPlane[yIndex];
-            final int uValue = uPlane[uvIndex] - 128;
+            // final int uValue = uPlane[uvIndex] - 128; // Unused
             final int vValue = vPlane[uvIndex] - 128;
             
             // Convert to RGB

@@ -32,6 +32,10 @@ class AudioDetectionProvider extends ChangeNotifier {
 
   bool get isRecording => _isRecording;
   bool get isProcessing => _isProcessing;
+  bool get isInitialized => _isInitialized;
+  bool get hasRecording => _hasRecording || _lastRecordedFilePath != null;
+  String? get lastError => _lastError;
+  String? get error => _lastError;
   EmotionResult? get lastResult => _lastResult;
   String? get friendlyResponse => _friendlyResponse;
   List<double> get audioData => _audioData;
@@ -39,6 +43,16 @@ class AudioDetectionProvider extends ChangeNotifier {
   String get selectedLanguage => _selectedLanguage;
   String get liveTranscribedText => _liveTranscribedText;
   String? get audioFilePath => _lastRecordedFilePath;
+
+  // Get the user speech text for advice (formatted)
+  String get userSpeechForAdvice {
+    if (_liveTranscribedText.isNotEmpty && 
+        !_liveTranscribedText.startsWith("(") && 
+        _liveTranscribedText.trim().isNotEmpty) {
+      return _liveTranscribedText.trim();
+    }
+    return "";
+  }
 
   // Language Code mapping
   String get currentLangCode => _selectedLanguage == 'हिंदी' ? 'hi' : (_selectedLanguage == 'ગુજરાતી' ? 'gu' : 'en');
@@ -114,10 +128,13 @@ class AudioDetectionProvider extends ChangeNotifier {
         _liveTranscribedText = userText;
 
         // 3. Run Full Pipeline
+        print('🚀 About to start friend pipeline...');
         await _processFriendPipeline(audioFile, userText);
+        print('✅ Friend pipeline completed successfully');
       }
     } catch (e) {
       _lastError = "Processing Error: $e";
+      print('❌ stopRecording failed: $e');
     } finally {
       _isProcessing = false;
       if (_mounted) notifyListeners();
@@ -127,9 +144,19 @@ class AudioDetectionProvider extends ChangeNotifier {
   // 🔥 THE REALITY LOGIC 🔥
   Future<void> _processFriendPipeline(File audioFile, String originalText) async {
     try {
+      print('🔄 Starting emotion detection pipeline...');
+      print('📁 Audio file: ${audioFile.path}');
+      print('📝 Original text: "$originalText"');
+      
       // A. Detect Tone (Emotion) from Audio
+      print('🎯 Calling emotion analysis...');
       _lastResult = await _emotionService.analyzeAudio(audioFile);
       String detectedEmotion = _lastResult?.emotion ?? 'neutral';
+      
+      print('😊 Emotion detected: $detectedEmotion (confidence: ${_lastResult?.confidence})');
+      if (_lastResult?.hasError == true) {
+        print('❌ Emotion analysis error: ${_lastResult?.error}');
+      }
       
       // B. Translate Input to English (if needed)
       String englishText = originalText;
@@ -187,6 +214,70 @@ class AudioDetectionProvider extends ChangeNotifier {
   
   void clearResults() => _clearState();
   void clearRecording() => _clearState();
+
+  /// Speak the provided advice text
+  Future<void> speakAdvice([String? adviceText]) async {
+    final textToSpeak = adviceText ?? _friendlyResponse;
+    if (textToSpeak == null || textToSpeak.isEmpty) {
+      print('No advice text to speak');
+      return;
+    }
+
+    try {
+      print('🔊 Speaking advice: "$textToSpeak"');
+      await _ttsService.speak(textToSpeak, currentLocaleId);
+    } catch (e) {
+      print('⚠️ TTS failed: $e');
+      _lastError = "Speech failed: $e";
+      if (_mounted) notifyListeners();
+    }
+  }
+
+  /// Play the last recorded audio file
+  Future<void> playLastRecording() async {
+    if (_lastRecordedFilePath == null) {
+      _lastError = 'No recording available to play';
+      notifyListeners();
+      return;
+    }
+
+    try {
+      // Simple playback implementation - could be enhanced with audio player
+      print('Playing recording: $_lastRecordedFilePath');
+      // TODO: Implement actual audio playback if needed
+      // For now, just log the attempt
+    } catch (e) {
+      _lastError = 'Failed to play recording: $e';
+      notifyListeners();
+    }
+  }
+
+  /// Get fresh advice from Gemini for the current emotion
+  Future<String> getFreshAdvice([String? customText]) async {
+    if (_lastResult == null) {
+      throw Exception('No emotion result available');
+    }
+
+    final textToAnalyze = customText ?? 
+                         (liveTranscribedText.isNotEmpty ? liveTranscribedText : "I shared an audio recording");
+    
+    try {
+      final advice = await _geminiService.getConversationalAdvice(
+        userSpeech: textToAnalyze,
+        detectedEmotion: _lastResult!.emotion,
+        language: _selectedLanguage,
+      );
+      
+      // Update the friendly response with fresh advice
+      _friendlyResponse = advice;
+      if (_mounted) notifyListeners();
+      
+      return advice;
+    } catch (e) {
+      print('Failed to get fresh advice: $e');
+      throw Exception('Failed to get advice: $e');
+    }
+  }
 
   bool _mounted = true;
   @override
